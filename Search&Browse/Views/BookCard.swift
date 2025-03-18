@@ -22,23 +22,24 @@ struct BookCard: View {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                 }
-                .frame(height: 200)
+                .frame(height: 160)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             } else {
                 Rectangle()
                     .fill(Color.gray.opacity(0.2))
-                    .frame(height: 200)
+                    .frame(height: 160)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
             
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(book.title)
                     .font(.headline)
-                    .lineLimit(2)
+                    .lineLimit(1)
                 
                 Text(book.author)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
                 
                 Text(String(book.publicationYear))
                     .font(.caption)
@@ -46,13 +47,13 @@ struct BookCard: View {
                 
                 Text(book.genre)
                     .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
                     .background(Color.blue.opacity(0.1))
                     .cornerRadius(4)
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 6)
+            .padding(.bottom, 8)
         }
         .background(Color.white)
         .cornerRadius(12)

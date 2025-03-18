@@ -64,7 +64,7 @@ class BookSearchViewModel: ObservableObject {
         // Setup Books by Author
         booksByAuthor = Dictionary(grouping: books, by: { $0.author })
     }
-    @Published var searchText = ""
+        @Published var searchText = ""
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
     @Published var selectedGenre: String? = nil
@@ -85,9 +85,35 @@ class BookSearchViewModel: ObservableObject {
     
     func searchBooks() {
         guard !searchText.isEmpty else { 
-            books = []
+            setupInitialData()
             return 
         }
+        
+        // Store initial books for filtering
+        let initialBooks = self.books
+        
+        // Filter and sort matches based on relevance
+        // Filter and sort matches based on relevance, limiting to exactly 3 results
+        let searchQuery = searchText.lowercased()
+        let filteredBooks = initialBooks
+            .map { book -> (Book, Int) in
+                let titleMatch = book.title.lowercased().contains(searchQuery)
+                let authorMatch = book.author.lowercased().contains(searchQuery)
+                let genreMatch = book.genre.lowercased().contains(searchQuery)
+                
+                let titleScore = titleMatch ? 3 : 0
+                let authorScore = authorMatch ? 2 : 0
+                let genreScore = genreMatch ? 1 : 0
+                let totalScore = titleScore + authorScore + genreScore
+                
+                return (book, totalScore)
+            }
+            .filter { $0.1 > 0 } // Only keep matches
+            .sorted { $0.1 > $1.1 } // Sort by score
+            .prefix(3) // Take exactly 3 results
+            .map { $0.0 } // Extract just the books
+        
+        self.books = Array(filteredBooks)
         isLoading = true
         errorMessage = nil
         
@@ -118,7 +144,7 @@ class BookSearchViewModel: ObservableObject {
             }
             .decode(type: OpenLibraryResponse.self, decoder: JSONDecoder())
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
+            .sink(receiveCompletion: { [weak self] (completion: Subscribers.Completion<Error>) in
                 self?.isLoading = false
                 if case .failure(let error) = completion {
                     if let decodingError = error as? DecodingError {
@@ -140,7 +166,7 @@ class BookSearchViewModel: ObservableObject {
                         self?.errorMessage = "Failed to fetch books: \(error.localizedDescription)"
                     }
                 }
-            } receiveValue: { [weak self] response in
+            }, receiveValue: { [weak self] (response: OpenLibraryResponse) in
                 let books = response.allBooks.map { $0.book }
                 DispatchQueue.main.async {
                     self?.books = books
@@ -150,7 +176,7 @@ class BookSearchViewModel: ObservableObject {
                         self?.errorMessage = nil
                     }
                 }
-            }
+            })
             .store(in: &cancellables)
     }
     
