@@ -10,8 +10,10 @@ import SwiftUI
 struct SearchBrowseView: View {
     @StateObject private var viewModel = BookSearchViewModel()
     @State private var selectedFilter: String? = nil
+    @State private var selectedGenreFromCard: String? = nil
     
     let genres = ["Fiction", "Science", "History", "Technology", "Business"]
+    let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
     
     var body: some View {
         NavigationView {
@@ -43,8 +45,8 @@ struct SearchBrowseView: View {
                             HStack(spacing: 12) {
                                 ForEach(genres, id: \.self) { genre in
                                     Button(action: {
-                                        viewModel.fetchBooksByGenre(genre)
                                         selectedFilter = genre
+                                        selectedGenreFromCard = nil
                                     }) {
                                         Text(genre)
                                             .padding(.horizontal, 16)
@@ -66,29 +68,105 @@ struct SearchBrowseView: View {
                         Text(error)
                             .foregroundColor(.red)
                             .padding()
+                    } else if let selectedGenre = selectedFilter ?? selectedGenreFromCard {
+                        // Selected Genre Grid View
+                        VStack(alignment: .leading) {
+                            Text(selectedGenre)
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            LazyVGrid(columns: columns, spacing: 16) {
+                                ForEach(viewModel.booksByGenre[selectedGenre] ?? []) { book in
+                                    BookCard(book: book)
+                                        .frame(height: 280)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
                     } else {
-                        // Books by Genre Sections
-                        ForEach(Array(viewModel.booksByGenre.keys.sorted()), id: \.self) { genre in
-                            if !viewModel.booksByGenre[genre]!.isEmpty {
-                                VStack(alignment: .leading) {
-                                    Text(genre)
-                                        .font(.title2)
-                                        .fontWeight(.bold)
-                                        .padding(.horizontal)
-                                    
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 16) {
-                                            ForEach(viewModel.booksByGenre[genre]!) { book in
-                                                BookCard(book: book)
-                                                    .frame(width: 180)
-                                            }
-                                        }
-                                        .padding(.horizontal)
+                        // For You Section
+                        VStack(alignment: .leading) {
+                            Text("For You")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(viewModel.forYouBooks) { book in
+                                        BookCard(book: book)
+                                            .frame(width: 180)
                                     }
                                 }
-                                .padding(.vertical, 8)
+                                .padding(.horizontal)
                             }
                         }
+                        .padding(.vertical, 8)
+                        
+                        // Popular Books Section
+                        VStack(alignment: .leading) {
+                            Text("Popular Books")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(viewModel.popularBooks) { book in
+                                        BookCard(book: book)
+                                            .frame(width: 180)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        
+                        // Books by Genre Section with Square Cards
+                        VStack(alignment: .leading) {
+                            Text("Browse by Genre")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(Array(viewModel.booksByGenre.keys.sorted()), id: \.self) { genre in
+                                        Button(action: {
+                                            selectedGenreFromCard = genre
+                                            selectedFilter = nil
+                                        }) {
+                                            VStack {
+                                                if let firstBook = viewModel.booksByGenre[genre]?.first,
+                                                   let imageURL = firstBook.imageURL,
+                                                   let url = URL(string: imageURL) {
+                                                    AsyncImage(url: url) { image in
+                                                        image
+                                                            .resizable()
+                                                            .aspectRatio(contentMode: .fill)
+                                                    } placeholder: {
+                                                        Color.gray.opacity(0.2)
+                                                    }
+                                                    .frame(width: 120, height: 120)
+                                                    .clipped()
+                                                }
+                                                
+                                                Text(genre)
+                                                    .font(.headline)
+                                                    .foregroundColor(.primary)
+                                            }
+                                            .frame(width: 120, height: 160)
+                                            .background(Color.white)
+                                            .cornerRadius(12)
+                                            .shadow(radius: 4)
+                                        }
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        .padding(.vertical, 8)
                         
                         // Search Results Section
                         if !viewModel.searchText.isEmpty {
