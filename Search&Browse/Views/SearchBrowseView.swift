@@ -27,126 +27,137 @@ struct SearchBrowseView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("Hi \(userName)")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .padding(.horizontal)
+                    if viewModel.searchText.isEmpty {
+                        Text("Hi \(userName)")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .padding(.horizontal)
+                    }
                     
                     // Search Bar
                     VStack(alignment: .leading) {
                         HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Search by title, author, or genre", text: $viewModel.searchText)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .onChange(of: viewModel.searchText) { _ in
-                                    viewModel.searchBooks()
-                                    showingSuggestions = !viewModel.searchText.isEmpty
+                            HStack {
+                                Image(systemName: "magnifyingglass")
+                                    .foregroundColor(.gray)
+                                TextField("Search by title, author or genre...", text: $viewModel.searchText)
+                                    .disableAutocorrection(true)
+                                    .onChange(of: viewModel.searchText) { oldValue, newValue in
+                                        showingSuggestions = !newValue.isEmpty
+                                    }
+                                if !viewModel.searchText.isEmpty {
+                                    Button(action: {
+                                        viewModel.searchText = ""
+                                        showingSuggestions = false
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(.gray)
+                                    }
                                 }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            
+                            if !viewModel.searchText.isEmpty {
+                                Button("Cancel") {
+                                    viewModel.searchText = ""
+                                    showingSuggestions = false
+                                    hideKeyboard()
+                                }
+                                .foregroundColor(.red)
+                                .transition(.move(edge: .trailing))
+                            }
                         }
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(10)
-                        
-                        if showingSuggestions && !viewModel.books.isEmpty {
-                            SearchSuggestionsView(
-                                books: viewModel.books,
-                                showingSuggestions: $showingSuggestions,
-                                selectedBook: $selectedBook,
-                                selectedAuthor: $selectedAuthor,
-                                selectedFilter: $selectedFilter,
-                                searchText: $viewModel.searchText
-                            )
-                        }
+                        .animation(.default, value: viewModel.searchText)
                     }
                     .padding(.horizontal)
                     
-                    GenreCategoriesView(
-                        genres: genres,
-                        selectedFilter: $selectedFilter,
-                        selectedGenreFromCard: $selectedGenreFromCard
-                    )
-                    
-                    // Search Results Section
                     if !viewModel.searchText.isEmpty {
-                        VStack(alignment: .leading) {
-                            Text("Search Results")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .padding(.horizontal)
-                            
-                            if viewModel.books.isEmpty {
-                                Text("No books found")
-                                    .foregroundColor(.secondary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                            } else {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
-                                        ForEach(viewModel.books) { book in
-                                            BookCard(book: book)
-                                                .frame(width: 160)
-                                        }
-                                    }
-                                    .padding(.horizontal)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    } else if let error = viewModel.errorMessage {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .padding()
-                    } else if let selectedGenre = selectedFilter ?? selectedGenreFromCard {
-                        // Selected Genre Grid View
-                        VStack(alignment: .leading) {
-                            Text(selectedGenre)
-                                .font(.title)
-                                .fontWeight(.bold)
-                                .padding(.horizontal)
-                            
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else if let error = viewModel.errorMessage {
+                            Text(error)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else if viewModel.searchResults.isEmpty {
+                            Text("No books found")
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                        } else {
                             LazyVGrid(columns: columns, spacing: 16) {
-                                ForEach(initialBooksByGenre[selectedGenre] ?? []) { book in
+                                ForEach(Array(viewModel.searchResults.prefix(8))) { book in
                                     BookCard(book: book)
                                         .frame(maxWidth: .infinity)
                                         .frame(height: 280)
-                                        .padding(.horizontal, 8)
+                                        .onTapGesture {
+                                            selectedBook = book
+                                        }
                                 }
                             }
                             .padding(.horizontal)
                         }
                     } else {
-                        BookSectionsView(
-                            forYouBooks: viewModel.forYouBooks,
-                            popularBooks: viewModel.popularBooks,
-                            booksByGenre: initialBooksByGenre,
-                            selectedGenreFromCard: $selectedGenreFromCard,
-                            selectedFilter: $selectedFilter
+                        GenreCategoriesView(
+                            genres: genres,
+                            selectedFilter: $selectedFilter,
+                            selectedGenreFromCard: $selectedGenreFromCard
                         )
+                        
+                        if let selectedGenre = selectedFilter ?? selectedGenreFromCard {
+                            // Selected Genre Grid View
+                            VStack(alignment: .leading) {
+                                Text(selectedGenre)
+                                    .font(.title)
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal)
+                                
+                                LazyVGrid(columns: columns, spacing: 16) {
+                                    ForEach(initialBooksByGenre[selectedGenre] ?? []) { book in
+                                        BookCard(book: book)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 280)
+                                            .padding(.horizontal, 8)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        } else {
+                            BookSectionsView(
+                                forYouBooks: viewModel.forYouBooks,
+                                popularBooks: viewModel.popularBooks,
+                                booksByGenre: initialBooksByGenre,
+                                selectedGenreFromCard: $selectedGenreFromCard,
+                                selectedFilter: $selectedFilter
+                            )
+                        }
                     }
                 }
-            }
-            .onAppear {
-                initialBooksByGenre = viewModel.booksByGenre
-            }
-            .sheet(item: $selectedBook) { book in
-                BookDetailView(book: book)
-                    .onDisappear {
-                        selectedGenreFromCard = nil
-                        viewModel.searchText = ""
-                        showingSuggestions = false
-                    }
-            }
-            .sheet(item: Binding(
-                get: { selectedAuthor.map { Author(name: $0) } },
-                set: { author in selectedAuthor = author?.name }
-            )) { author in
-                AuthorBooksView(author: author.name, books: viewModel.books.filter { $0.author == author.name })
+                .onAppear {
+                    initialBooksByGenre = viewModel.booksByGenre
+                }
+                NavigationLink(value: selectedBook) {
+                    EmptyView()
+                }
+                .navigationDestination(for: Book.self) { book in
+                    BookDetailView(book: book)
+                        .onDisappear {
+                            selectedGenreFromCard = nil
+                            viewModel.searchText = ""
+                            showingSuggestions = false
+                        }
+                }
+                .sheet(item: Binding(
+                    get: { selectedAuthor.map { Author(name: $0) } },
+                    set: { author in selectedAuthor = author?.name }
+                )) { author in
+                    AuthorBooksView(author: author.name, books: viewModel.searchResults.filter { $0.author == author.name })
+                }
             }
         }
     }

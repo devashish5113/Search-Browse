@@ -10,6 +10,7 @@ import SwiftUI
 struct BookDetailView: View {
     let book: Book
     @Environment(\.dismiss) private var dismiss
+    @State private var showReservationAlert = false
     
     var body: some View {
         ScrollView {

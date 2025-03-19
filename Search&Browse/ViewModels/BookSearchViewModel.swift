@@ -9,6 +9,7 @@ import Foundation
 import Combine
 
 class BookSearchViewModel: ObservableObject {
+    @Published var searchResults: [Book] = []
     @Published var books: [Book] = [
         // Technology Books
         Book(id: UUID(), title: "The Design of Everyday Things", author: "Don Norman", isbn: "978-0465050659", genre: "Technology", publicationYear: 2013, availability: .available, reservedBy: nil, imageURL: "https://covers.openlibrary.org/b/isbn/9780465050659-L.jpg"),
@@ -63,8 +64,24 @@ class BookSearchViewModel: ObservableObject {
         
         // Setup Books by Author
         booksByAuthor = Dictionary(grouping: books, by: { $0.author })
+        
+        // Setup debounced search
+        searchTextSubject
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.searchBooks()
+            }
+            .store(in: &cancellables)
+        
+        $searchText
+            .sink { [weak self] text in
+                self?.isLoading = !text.isEmpty
+                self?.searchTextSubject.send(text)
+            }
+            .store(in: &cancellables)
     }
         @Published var searchText = ""
+    private var searchTextSubject = PassthroughSubject<String, Never>()
     @Published var isLoading = false
     @Published var errorMessage: String? = nil
     @Published var selectedGenre: String? = nil
@@ -85,40 +102,58 @@ class BookSearchViewModel: ObservableObject {
     
     func searchBooks() {
         guard !searchText.isEmpty else { 
-            setupInitialData()
+            searchResults = []
+            isLoading = false
+            errorMessage = nil
             return 
         }
         
-        // Store initial books for filtering
-        let initialBooks = self.books
-        
-        // Filter and sort matches based on relevance
-        // Filter and sort matches based on relevance, limiting to exactly 3 results
         let searchQuery = searchText.lowercased()
-        let filteredBooks = initialBooks
+        
+        // First search local books
+        let filteredBooks = books
             .map { book -> (Book, Int) in
-                let titleMatch = book.title.lowercased().contains(searchQuery)
-                let authorMatch = book.author.lowercased().contains(searchQuery)
-                let genreMatch = book.genre.lowercased().contains(searchQuery)
+                var score = 0
+                let title = book.title.lowercased()
+                let author = book.author.lowercased()
+                let genre = book.genre.lowercased()
                 
-                let titleScore = titleMatch ? 3 : 0
-                let authorScore = authorMatch ? 2 : 0
-                let genreScore = genreMatch ? 1 : 0
-                let totalScore = titleScore + authorScore + genreScore
+                // Exact title match gets highest priority
+                if title == searchQuery {
+                    score += 100
+                }
+                // Title starts with search query
+                else if title.hasPrefix(searchQuery) {
+                    score += 50
+                }
+                // Title contains search query
+                else if title.contains(searchQuery) {
+                    score += 25
+                }
                 
-                return (book, totalScore)
+                // Author name matching
+                if author.contains(searchQuery) {
+                    score += 15
+                }
+                
+                // Genre matching
+                if genre.contains(searchQuery) {
+                    score += 10
+                }
+                
+                return (book, score)
             }
             .filter { $0.1 > 0 } // Only keep matches
-            .sorted { $0.1 > $1.1 } // Sort by score
-            .prefix(3) // Take exactly 3 results
+            .sorted { $0.1 > $1.1 } // Sort by score descending
             .map { $0.0 } // Extract just the books
         
-        self.books = Array(filteredBooks)
-        isLoading = true
-        errorMessage = nil
+        // Update search results with local matches
+        self.searchResults = Array(filteredBooks)
         
-        let query = searchText.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        let urlString = "https://openlibrary.org/search.json?q=\(query)"
+        // Construct the OpenLibrary search URL for additional results
+        let baseURL = "https://openlibrary.org/search.json"
+        let encodedQuery = searchQuery.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let urlString = "\(baseURL)?q=\(encodedQuery)"
         
         guard let url = URL(string: urlString) else {
             errorMessage = "Invalid URL"
@@ -167,12 +202,11 @@ class BookSearchViewModel: ObservableObject {
                     }
                 }
             }, receiveValue: { [weak self] (response: OpenLibraryResponse) in
-                let books = response.allBooks.map { $0.book }
+                let apiBooks = response.allBooks.map { $0.book }
                 DispatchQueue.main.async {
-                    self?.books = books
-                    if books.isEmpty {
-                        self?.errorMessage = "No books found for your search"
-                    } else {
+                    if !apiBooks.isEmpty {
+                        // Append API results to existing local results
+                        self?.searchResults.append(contentsOf: apiBooks)
                         self?.errorMessage = nil
                     }
                 }

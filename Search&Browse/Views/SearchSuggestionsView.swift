@@ -16,41 +16,35 @@ struct SearchSuggestionsView: View {
     @Binding var searchText: String
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(books.prefix(3))) { book in
-                VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(books) { book in
+                VStack(alignment: .leading, spacing: 0) {
                     Button(action: {
                         selectedBook = book
                         showingSuggestions = false
                         searchText = ""
                     }) {
-                        Text(book.title)
-                            .foregroundColor(.primary)
-                    }
-                    Button(action: {
-                        selectedAuthor = book.author
-                        showingSuggestions = false
-                        searchText = ""
-                    }) {
-                        Text(book.author)
-                            .foregroundColor(.secondary)
-                    }
-                    Button(action: {
-                        selectedFilter = book.genre
-                        showingSuggestions = false
-                        searchText = ""
-                    }) {
-                        Text(book.genre)
-                            .foregroundColor(.blue)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(book.title)
+                                    .foregroundColor(.primary)
+                                    .font(.body)
+                                Text("Song • \(book.author)")
+                                    .foregroundColor(.secondary)
+                                    .font(.subheadline)
+                            }
+                            Spacer()
+                            Image(systemName: "ellipsis")
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal)
                     }
                     Divider()
+                        .padding(.leading)
                 }
-                .padding(.horizontal)
             }
         }
-        .padding(.vertical, 8)
-        .background(Color.white)
-        .cornerRadius(10)
-        .shadow(radius: 5)
+        .background(Color(.systemBackground))
     }
 }
