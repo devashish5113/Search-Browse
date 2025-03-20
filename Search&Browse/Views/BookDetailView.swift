@@ -10,19 +10,10 @@ import SwiftUI
 struct BookDetailView: View {
     let book: Book
     @Environment(\.dismiss) private var dismiss
-    @State private var showReservationAlert = false
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                Button(action: { dismiss() }) {
-                    HStack {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.gray)
-                        Spacer()
-                    }
-                }
-                .padding(.horizontal)
                 
                 if let imageURL = book.imageURL,
                    let url = URL(string: imageURL) {

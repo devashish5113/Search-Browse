@@ -92,12 +92,20 @@ struct SearchBrowseView: View {
                         } else {
                             LazyVGrid(columns: columns, spacing: 16) {
                                 ForEach(Array(viewModel.searchResults.prefix(8))) { book in
-                                    BookCard(book: book)
-                                        .frame(maxWidth: .infinity)
-                                        .frame(height: 280)
-                                        .onTapGesture {
-                                            selectedBook = book
+                                    NavigationLink(isActive: Binding(
+                                        get: { selectedBook?.id == book.id },
+                                        set: { isActive in
+                                            if isActive {
+                                                selectedBook = book
+                                            }
                                         }
+                                    )) {
+                                        BookDetailView(book: book)
+                                    } label: {
+                                        BookCard(book: book)
+                                            .frame(maxWidth: .infinity)
+                                            .frame(height: 280)
+                                    }
                                 }
                             }
                             .padding(.horizontal)
@@ -141,22 +149,19 @@ struct SearchBrowseView: View {
                 .onAppear {
                     initialBooksByGenre = viewModel.booksByGenre
                 }
-                NavigationLink(value: selectedBook) {
-                    EmptyView()
+                .onChange(of: selectedBook) { oldValue, newValue in
+                    if newValue == nil {
+                        selectedGenreFromCard = nil
+                        viewModel.searchText = ""
+                        showingSuggestions = false
+                    }
                 }
-                .navigationDestination(for: Book.self) { book in
-                    BookDetailView(book: book)
-                        .onDisappear {
-                            selectedGenreFromCard = nil
-                            viewModel.searchText = ""
-                            showingSuggestions = false
-                        }
-                }
-                .sheet(item: Binding(
-                    get: { selectedAuthor.map { Author(name: $0) } },
-                    set: { author in selectedAuthor = author?.name }
-                )) { author in
-                    AuthorBooksView(author: author.name, books: viewModel.searchResults.filter { $0.author == author.name })
+                .onChange(of: selectedAuthor) { oldValue, newValue in
+                    if newValue == nil {
+                        selectedGenreFromCard = nil
+                        viewModel.searchText = ""
+                        showingSuggestions = false
+                    }
                 }
             }
         }

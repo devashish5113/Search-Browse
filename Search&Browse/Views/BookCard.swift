@@ -34,6 +34,7 @@ struct BookCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(book.title)
                     .font(.headline)
+                    .foregroundColor(.primary)
                     .lineLimit(1)
                 
                 Text(book.author)

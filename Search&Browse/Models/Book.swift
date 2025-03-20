@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Book: Identifiable, Codable, Hashable {
+struct Book: Identifiable, Codable, Equatable {
     let id: UUID
     let title: String
     let author: String
@@ -17,6 +17,18 @@ struct Book: Identifiable, Codable, Hashable {
     let availability: AvailabilityStatus
     let reservedBy: UUID?
     let imageURL: String?
+    
+    static func == (lhs: Book, rhs: Book) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.title == rhs.title &&
+               lhs.author == rhs.author &&
+               lhs.isbn == rhs.isbn &&
+               lhs.genre == rhs.genre &&
+               lhs.publicationYear == rhs.publicationYear &&
+               lhs.availability == rhs.availability &&
+               lhs.reservedBy == rhs.reservedBy &&
+               lhs.imageURL == rhs.imageURL
+    }
 }
 
 enum AvailabilityStatus: String, Codable {

@@ -16,6 +16,7 @@ struct AuthorBooksView: View {
     let author: String
     let books: [Book]
     let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    @State private var selectedBook: Book?
     
     var body: some View {
         ScrollView {
@@ -27,7 +28,16 @@ struct AuthorBooksView: View {
                 
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(books) { book in
-                        NavigationLink(destination: BookDetailView(book: book)) {
+                        NavigationLink(isActive: Binding(
+    get: { selectedBook?.id == book.id },
+    set: { isActive in
+        if isActive {
+            selectedBook = book
+        }
+    }
+)) {
+    BookDetailView(book: book)
+} label: {
                             BookCard(book: book)
                                 .frame(height: 280)
                         }

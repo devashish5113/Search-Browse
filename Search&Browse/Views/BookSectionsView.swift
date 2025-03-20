@@ -13,6 +13,7 @@ struct BookSectionsView: View {
     let booksByGenre: [String: [Book]]
     @Binding var selectedGenreFromCard: String?
     @Binding var selectedFilter: String?
+    @State private var selectedBook: Book?
     
     var body: some View {
         VStack(spacing: 20) {
@@ -26,8 +27,19 @@ struct BookSectionsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         ForEach(forYouBooks) { book in
-                            BookCard(book: book)
-                                .frame(width: 180)
+                            NavigationLink(isActive: Binding(
+    get: { selectedBook?.id == book.id },
+    set: { isActive in
+        if isActive {
+            selectedBook = book
+        }
+    }
+)) {
+    BookDetailView(book: book)
+} label: {
+                                BookCard(book: book)
+                                    .frame(width: 180)
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -45,8 +57,19 @@ struct BookSectionsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
                         ForEach(popularBooks) { book in
-                            BookCard(book: book)
-                                .frame(width: 180)
+                            NavigationLink(isActive: Binding(
+    get: { selectedBook?.id == book.id },
+    set: { isActive in
+        if isActive {
+            selectedBook = book
+        }
+    }
+)) {
+    BookDetailView(book: book)
+} label: {
+                                BookCard(book: book)
+                                    .frame(width: 180)
+                            }
                         }
                     }
                     .padding(.horizontal)
